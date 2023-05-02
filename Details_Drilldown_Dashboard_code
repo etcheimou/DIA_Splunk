@@ -1,0 +1,60 @@
+<form version="1.1">
+  <label>Details_Drilldown</label>
+  <fieldset submitButton="false">
+    <input type="time" token="time" searchWhenChanged="true">
+      <label></label>
+      <default>
+        <earliest>-90d@d</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>index="osi_pi_dev" sourcetype="osipi" "AuditRecord{@AuditRecordID}"="$AuditRecordID$"
+| rename "AuditRecord.PIConfigurationDB.PIPoints.PIPoint{@PointID}" as PIConfigurationPIPointPointID 
+| rename "AuditRecord{@AuditRecordID}" as AuditRecordID 
+| eval Event_Type = case(match(_raw, "PIPoints"), "PI Point Configuration", match(_raw, "StateSets"), "Digital Set", match(_raw, "PointValue"), "PI Point Data", match(_raw, "PIModules"), "Module Database", match(_raw, "PIBatchDB"), "PI Batch", match(_raw, "PIModuleDB"), "PI UnitBatch", match(_raw, "PIDBSecurityTables"), "Database Security", match(_raw, "PIIdentities"), "Identity", match(_raw, "PIUsers"), "User", match(_raw, "PIGroups"), "Group", match(_raw, "PIIdentityMappings"), "Mapping", match(_raw, "PITrusts"), "Trust") 
+| eval Event_Action = coalesce(StateSetsAction,PIPointsAction,ArchivePointValueAction,SnapshotPointValueAction,PIModulesAction,PIBatchDBAction,PIModuleDBAction,PIDBSecurityTablesAction,PIIdentitiesAction,PIUsersAction,PIGroupsAction,PIIdentityMappingsAction,PITrustsAction) 
+| eval "Affected Object" = coalesce(StateSetName,PIPointName,ArchivePIPointPointID,SnapshotPIPointPointID,PIModuleName,PIBatchBatchID,PIUnitBatchBatchID,PIDBSecurityTableName,PIIdentityName,PIUserName,PIGroupName,PIIdentityMappingName,PITrustName) 
+| eval PointID = coalesce(ArchivePIPointPointID,PIConfigurationPIPointPointID,SnapshotPIPointPointID) 
+| lookup PointID PointID OUTPUT PrincipalName | lookup mapping.csv PIIdentityMappingName OUTPUT PrincipalName
+| table _time User_ID Event_Type Event_Action "Affected Object" PrincipalName AuditRecordID |rename PrincipalName as "Referenced Object" User_ID as "User ID" Event_Type as "Event Type" Event_Action as "Event Action"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>index="osi_pi_dev" sourcetype="osipi" "AuditRecord{@AuditRecordID}"="$AuditRecordID$"
+| rename "AuditRecord.PIConfigurationDB.PIPoints.PIPoint{@PointID}" as PIConfigurationPIPointPointID 
+| rename "AuditRecord{@AuditRecordID}" as AuditRecordID 
+| eval Event_Type = case(match(_raw, "PIPoints"), "PI Point Configuration", match(_raw, "StateSets"), "Digital Set", match(_raw, "PointValue"), "PI Point Data", match(_raw, "PIModules"), "Module Database", match(_raw, "PIBatchDB"), "PI Batch", match(_raw, "PIModuleDB"), "PI UnitBatch", match(_raw, "PIDBSecurityTables"), "Database Security", match(_raw, "PIIdentities"), "Identity", match(_raw, "PIUsers"), "User", match(_raw, "PIGroups"), "Group", match(_raw, "PIIdentityMappings"), "Mapping", match(_raw, "PITrusts"), "Trust") 
+| eval Event_Action = coalesce(StateSetsAction,PIPointsAction,ArchivePointValueAction,SnapshotPointValueAction,PIModulesAction,PIBatchDBAction,PIModuleDBAction,PIDBSecurityTablesAction,PIIdentitiesAction,PIUsersAction,PIGroupsAction,PIIdentityMappingsAction,PITrustsAction) 
+| eval "Affected Object" = coalesce(StateSetName,PIPointName,ArchivePIPointPointID,SnapshotPIPointPointID,PIModuleName,PIBatchBatchID,PIUnitBatchBatchID,PIDBSecurityTableName,PIIdentityName,PIUserName,PIGroupName,PIIdentityMappingName,PITrustName) 
+| eval PointID = coalesce(ArchivePIPointPointID,PIConfigurationPIPointPointID,SnapshotPIPointPointID) 
+| lookup PointID PointID OUTPUT PrincipalName 
+| table _raw</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+</form>
