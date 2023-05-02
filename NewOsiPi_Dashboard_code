@@ -1,0 +1,164 @@
+<form version="1.1" theme="light">
+  <label>PI Audit Trail Dashboard FAST version</label>
+  <fieldset submitButton="false">
+    <input type="time" token="time" searchWhenChanged="true">
+      <label></label>
+      <default>
+        <earliest>-7d@d</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="multiselect" token="EventType" searchWhenChanged="true">
+      <label>Event Type</label>
+      <choice value="*">All</choice>
+      <fieldForLabel>Event_Type</fieldForLabel>
+      <fieldForValue>Event_Type</fieldForValue>
+      <search>
+        <query> index="osi_pi_dev" sourcetype="osipi" 
+| eval Event_Type = case(match(_raw, "PIPoints"), "PI Point Configuration", match(_raw, "StateSets"), "Digital Set", match(_raw, "PointValue"), "PI Point Data", match(_raw, "PIModules"), "Module Database", match(_raw, "PIBatchDB"), "PI Batch", match(_raw, "PIModuleDB"), "PI UnitBatch", match(_raw, "PIDBSecurityTables"), "Database Security", match(_raw, "PIIdentities"), "Identity", match(_raw, "PIUsers"), "User", match(_raw, "PIGroups"), "Group", match(_raw, "PIIdentityMappings"), "Mapping", match(_raw, "PITrusts"), "Trust") 
+| stats count by Event_Type
+</query>
+        <earliest>$time.earliest$</earliest>
+        <latest>$time.latest$</latest>
+      </search>
+      <valuePrefix>Event_Type="</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter> OR </delimiter>
+      <change>
+        <eval token="form.EventType">case(mvcount('form.EventType') == 2 AND mvindex('form.EventType', 0) == "*", mvindex('form.EventType', 1), mvfind('form.EventType', "\\*") == mvcount('form.EventType') - 1, "*", true(), 'form.EventType')</eval>
+      </change>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="multiselect" token="ServiceAccount" searchWhenChanged="true">
+      <label>User ID</label>
+      <fieldForLabel>User_ID</fieldForLabel>
+      <fieldForValue>User_ID</fieldForValue>
+      <search>
+        <query>index="osi_pi_dev" sourcetype="osipi" 
+| dedup User_ID 
+| table User_ID 
+| eval User_ID=ltrim(User_ID, "AM\\")</query>
+      </search>
+      <delimiter> OR </delimiter>
+      <change>
+        <eval token="form.ServiceAccount">case(mvcount('form.ServiceAccount') == 2 AND mvindex('form.ServiceAccount', 0) == "*", mvindex('form.ServiceAccount', 1), mvfind('form.ServiceAccount', "\\*") == mvcount('form.ServiceAccount') - 1, "*", true(), 'form.ServiceAccount')</eval>
+      </change>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <valuePrefix>User_ID="*</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="Event_Action" searchWhenChanged="true">
+      <label>Event Action</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>Event_Action</fieldForLabel>
+      <fieldForValue>Event_Action</fieldForValue>
+      <search>
+        <query>index="osi_pi_dev" sourcetype="osipi"  
+| eval Event_Action = coalesce(StateSetsAction,PIPointsAction,ArchivePointValueAction,SnapshotPointValueAction,PIModulesAction,PIBatchDBAction,PIModuleDBAction,PIDBSecurityTablesAction,PIIdentitiesAction,PIUsersAction,PIGroupsAction,PIIdentityMappingsAction,PITrustsAction) 
+| stats count by Event_Action
+</query>
+        <earliest>$time.earliest$</earliest>
+        <latest>$time.latest$</latest>
+      </search>
+      <valuePrefix>Event_Action="</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter> OR </delimiter>
+      <change>
+        <eval token="form.Event_Action">case(mvcount('form.Event_Action') == 2 AND mvindex('form.Event_Action', 0) == "*", mvindex('form.Event_Action', 1), mvfind('form.Event_Action', "\\*") == mvcount('form.Event_Action') - 1, "*", true(), 'form.Event_Action')</eval>
+      </change>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Count of Events by Week</title>
+      <chart>
+        <search>
+          <query>index="osi_pi_dev" sourcetype="osipi"  
+| eval Event_Type = case(match(_raw, "PIPoints"), "PI Point Configuration", match(_raw, "StateSets"), "Digital Set", match(_raw, "PointValue"), "PI Point Data", match(_raw, "PIModules"), "Module Database", match(_raw, "PIBatchDB"), "PI Batch", match(_raw, "PIModuleDB"), "PI UnitBatch", match(_raw, "PIDBSecurityTables"), "Database Security", match(_raw, "PIIdentities"), "Identity", match(_raw, "PIUsers"), "User", match(_raw, "PIGroups"), "Group", match(_raw, "PIIdentityMappings"), "Mapping", match(_raw, "PITrusts"), "Trust") 
+| eval Event_Action = coalesce(StateSetsAction,PIPointsAction,ArchivePointValueAction,SnapshotPointValueAction,PIModulesAction,PIBatchDBAction,PIModuleDBAction,PIDBSecurityTablesAction,PIIdentitiesAction,PIUsersAction,PIGroupsAction,PIIdentityMappingsAction,PITrustsAction) 
+| search $EventType$ $Event_Action$ $ServiceAccount$ 
+| timechart count span=1d</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Count of Events by Type</title>
+      <table>
+        <search>
+          <query>index="osi_pi_dev" sourcetype="osipi"  
+| eval Event_Type = case(match(_raw, "PIPoints"), "PI Point Configuration", match(_raw, "StateSets"), "Digital Set", match(_raw, "PointValue"), "PI Point Data", match(_raw, "PIModules"), "Module Database", match(_raw, "PIBatchDB"), "PI Batch", match(_raw, "PIModuleDB"), "PI UnitBatch", match(_raw, "PIDBSecurityTables"), "Database Security", match(_raw, "PIIdentities"), "Identity", match(_raw, "PIUsers"), "User", match(_raw, "PIGroups"), "Group", match(_raw, "PIIdentityMappings"), "Mapping", match(_raw, "PITrusts"), "Trust") 
+| eval Event_Action = coalesce(StateSetsAction,PIPointsAction,ArchivePointValueAction,SnapshotPointValueAction,PIModulesAction,PIBatchDBAction,PIModuleDBAction,PIDBSecurityTablesAction,PIIdentitiesAction,PIUsersAction,PIGroupsAction,PIIdentityMappingsAction,PITrustsAction) 
+| search $EventType$ $Event_Action$ $ServiceAccount$ 
+| stats count by Event_Type 
+| sort - count 
+| addcoltotals labelfield=Event_Type label=Total</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Count of Events by Action</title>
+      <table>
+        <search>
+          <query>index="osi_pi_dev" sourcetype="osipi"  
+| eval Event_Type = case(match(_raw, "PIPoints"), "PI Point Configuration", match(_raw, "StateSets"), "Digital Set", match(_raw, "PointValue"), "PI Point Data", match(_raw, "PIModules"), "Module Database", match(_raw, "PIBatchDB"), "PI Batch", match(_raw, "PIModuleDB"), "PI UnitBatch", match(_raw, "PIDBSecurityTables"), "Database Security", match(_raw, "PIIdentities"), "Identity", match(_raw, "PIUsers"), "User", match(_raw, "PIGroups"), "Group", match(_raw, "PIIdentityMappings"), "Mapping", match(_raw, "PITrusts"), "Trust") 
+| eval Event_Action = coalesce(StateSetsAction,PIPointsAction,ArchivePointValueAction,SnapshotPointValueAction,PIModulesAction,PIBatchDBAction,PIModuleDBAction,PIDBSecurityTablesAction,PIIdentitiesAction,PIUsersAction,PIGroupsAction,PIIdentityMappingsAction,PITrustsAction) 
+| search $EventType$ $Event_Action$ $ServiceAccount$ 
+| stats count by Event_Action 
+| sort - count 
+| addcoltotals labelfield=Event_Type label=Total</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>index="osi_pi_dev" sourcetype="osipi" 
+| rename "AuditRecord.PIConfigurationDB.PIPoints.PIPoint{@PointID}" as PIConfigurationPIPointPointID 
+| rename "AuditRecord{@AuditRecordID}" as AuditRecordID 
+| eval Event_Type = case(match(_raw, "PIPoints"), "PI Point Configuration", match(_raw, "StateSets"), "Digital Set", match(_raw, "PointValue"), "PI Point Data", match(_raw, "PIModules"), "Module Database", match(_raw, "PIBatchDB"), "PI Batch", match(_raw, "PIModuleDB"), "PI UnitBatch", match(_raw, "PIDBSecurityTables"), "Database Security", match(_raw, "PIIdentities"), "Identity", match(_raw, "PIUsers"), "User", match(_raw, "PIGroups"), "Group", match(_raw, "PIIdentityMappings"), "Mapping", match(_raw, "PITrusts"), "Trust") 
+| eval Event_Action = coalesce(StateSetsAction,PIPointsAction,ArchivePointValueAction,SnapshotPointValueAction,PIModulesAction,PIBatchDBAction,PIModuleDBAction,PIDBSecurityTablesAction,PIIdentitiesAction,PIUsersAction,PIGroupsAction,PIIdentityMappingsAction,PITrustsAction) 
+| eval "Affected Object" = coalesce(StateSetName,PIPointName,ArchivePIPointPointID,SnapshotPIPointPointID,PIModuleName,PIBatchBatchID,PIUnitBatchBatchID,PIDBSecurityTableName,PIIdentityName,PIUserName,PIGroupName,PIIdentityMappingName,PITrustName) 
+| eval PointID = coalesce(ArchivePIPointPointID,PIConfigurationPIPointPointID,SnapshotPIPointPointID) 
+| lookup PointID PointID OUTPUT PrincipalName 
+| lookup mapping.csv PIIdentityMappingName OUTPUT PrincipalName  
+| search $EventType$ $Event_Action$ $ServiceAccount$ 
+| table _time User_ID Event_Type Event_Action "Affected Object" PrincipalName AuditRecordID 
+| rename PrincipalName as "Referenced Object" User_ID as "User ID" Event_Type as "Event Type" Event_Action as "Event Action"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <drilldown>
+          <link target="_blank">/app/lilly_mq_osi_pi_dev/details_drilldown?form.time.earliest=$time.earliest$&amp;form.time.latest=$time.latest$&amp;Event_Action=$click.value2$&amp;AuditRecordID=$row.AuditRecordID$</link>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+</form>
